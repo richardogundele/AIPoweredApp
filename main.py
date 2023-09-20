@@ -34,27 +34,24 @@ def read_root():
 
 #User registration endpoint       
 @app.post("/register")
-async def register_user(email):
-    # email = user_data.email
+async def register_user(email: str):
     conn = sqlite3.connect("chat_app.db")
     cursor = conn.cursor()
-    cursor.execute("INSERT INTO users(email) VALUES (?)", (email,))
-    conn.commit()
-    conn.close()
-    return {"message":"User registered successfully"}
-
-@app.post("/login")
-async def login_user(email):
-    # email = user_data.email
-    conn = sqlite3.connect("chat_app.db")
-    cursor = conn.cursor()
-    cursor.execute("SELECT id FROM users WHERE email=?", (email,))
-    user_id = cursor.fetchone()
-    conn.close()
-    if user_id:
-        return {"message":"Login successful",}
+    
+    # Check if the email already exists in the database
+    cursor.execute("SELECT email FROM users WHERE email=?", (email,))
+    existing_email = cursor.fetchone()
+    
+    if existing_email:
+        # Email already exists, no need to insert it again
+        conn.close()
+        return {"message": "User signed in successfully"}
     else:
-        raise HTTPException(status_code=401, details="Authentication failed")
+        # Email doesn't exist, so insert it as a new user
+        cursor.execute("INSERT INTO users(email) VALUES (?)", (email,))
+        conn.commit()
+        conn.close()
+        return {"message": "User registered successfully"}
 
 @app.post("/text")
 async def post_text(email, textinput):
