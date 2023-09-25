@@ -15,7 +15,7 @@ def text_to_text_response(text_input):
         
         return result 
     except Exception as e: 
-        return ("Failed to get text response from GPT3.5 API")
+        return ("Failed to get text response from GPT4 API")
         
 # Eleven Labs -- Convert text to speech
 def convert_text_to_speech(result):
