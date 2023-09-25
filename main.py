@@ -7,8 +7,8 @@ import openai, os, sqlite3
 from fastapi import FastAPI, File, UploadFile, HTTPException
 from fastapi.responses import StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
-from openai_gpt4 import text_to_text_response, convert_text_to_speech
-from database import *
+from openai_gpt4 import text_to_text_response
+from database import export_chat_data_to_jsonl
 
 openai.api_key = os.getenv("OPENAI_API_KEY")
 
@@ -94,6 +94,8 @@ async def get_chat_history(email):
 async def trigger_export():
     result = export_chat_data_to_jsonl()
     return result
+
+
 
 # async def post_speech(speech_converted):
 #     chat_response = text_to_text_response(speech_converted)
