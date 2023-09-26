@@ -8,7 +8,7 @@ from fastapi import FastAPI, File, UploadFile, HTTPException
 from fastapi.responses import StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
 from openai_gpt4 import text_to_text_response
-from database import export_chat_data_to_jsonl
+from database import *
 
 openai.api_key = os.getenv("OPENAI_API_KEY")
 
@@ -27,6 +27,13 @@ app.add_middleware(
                    allow_headers=["*"],
                    )
 
+cursor.execute("""
+    CREATE TABLE IF NOT EXISTS users (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        email TEXT
+    )
+""")
+
 @app.get("/")
 def read_root():
     return {"ThespAIn": "/Welcome To ThespAIn Backend Code"}
@@ -34,7 +41,7 @@ def read_root():
 #User registration endpoint       
 @app.post("/getstarted")
 async def get_started(email):
-    conn = sqlite3.connect("chat_app.db")
+    conn = sqlite3.connect("chats.db")
     cursor = conn.cursor()
     # Check if the email already exists in the database
     cursor.execute("SELECT email FROM users WHERE email=?", (email,))
@@ -58,7 +65,7 @@ async def post_text(email, textinput):
     # Save the conversation to the database
     conn = sqlite3.connect("chat_app.db")
     cursor = conn.cursor()
-    cursor.execute("INSERT INTO chat_history (user_email, text_input, message) VALUES (?, ?, ?)", (email, textinput, message))
+    cursor.execute("INSERT INTO chat_history (user_email, prompt, completion) VALUES (?, ?, ?)", (email, textinput, message))
     conn.commit()
     conn.close()
     print("text message posted successfully")
@@ -84,8 +91,8 @@ async def post_speech(email, file:UploadFile= File(...)):
 async def get_chat_history(email):
     conn = sqlite3.connect("chat_app.db")
     cursor = conn.cursor()
-    cursor.execute("SELECT text_input, message FROM chat_history WHERE user_email=?", (email,))
-    chat_history = [{"text_input": row[0], "message":row[1]} for row in cursor.fetchall()]
+    cursor.execute("SELECT prompt, completion FROM chat_history WHERE user_email=?", (email,))
+    chat_history = [{"tprompt": row[0], "completion":row[1]} for row in cursor.fetchall()]
     conn.close()
     trigger_export()
     return {"chat_history":chat_history}
