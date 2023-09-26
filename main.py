@@ -3,18 +3,20 @@ from fastapi import FastAPI
 app = FastAPI()
 
 
-import openai, os, sqlite3
+import openai, os, sqlite3, asyncpg
 from fastapi import FastAPI, File, UploadFile, HTTPException
 from fastapi.responses import StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
 from openai_gpt4 import text_to_text_response
-<<<<<<< HEAD
 from database import *
-=======
-from database import export_chat_data_to_jsonl
->>>>>>> dc4bc8822be4c749ebcbc28f866dc9edac44039a
 
 openai.api_key = os.getenv("OPENAI_API_KEY")
+
+DATABASE_URL = os.getenv("DATABASE_URL")
+
+db_url = os.getenv("DATABASE_URL")
+db_user = os.getenv("DB_USER")
+db_password = os.getenv("DB_PASSWORD")
 
 origins = [ 
            "https://localhost:5173",
@@ -31,49 +33,68 @@ app.add_middleware(
                    allow_headers=["*"],
                    )
 
-cursor.execute("""
-    CREATE TABLE IF NOT EXISTS users (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        email TEXT
-    )
-""")
+async def create_db_pool():
+    return await asyncpg.create_pool(db_url, user=db_user, password=db_password)
+
 
 @app.get("/")
 def read_root():
     return {"ThespAIn": "/Welcome To ThespAIn Backend Code"}
 
-#User registration endpoint       
-@app.post("/getstarted")
+@app.get("/some_route")
+async def get_data():
+    conn = await connect_to_database()
+    data = await conn.fetch("SELECT * FROM your_table")
+    await conn.close()
+    return {"data": data}
+
 async def get_started(email):
-    conn = sqlite3.connect("chats.db")
-    cursor = conn.cursor()
-    # Check if the email already exists in the database
-    cursor.execute("SELECT email FROM users WHERE email=?", (email,))
-    existing_email = cursor.fetchone()
-    
-    if existing_email:
-        # Email already exists, no need to insert it again
-        conn.close()
-        return {"message": "User signed in successfully"}
-    else:
-        # Email doesn't exist, so insert it as a new user
-        cursor.execute("INSERT INTO users(email) VALUES (?)", (email,))
-        conn.commit()
-        conn.close()
-        return {"message": "User registered successfully"}
+    try:
+        conn = await asyncpg.connect(DATABASE_URL)
+        # Check if the email already exists in the database
+        query = "SELECT email FROM users WHERE email=$1"
+        existing_email = await conn.fetchval(query, email)
+
+        if existing_email:
+            # Email already exists, no need to insert it again
+            await conn.close()
+            return {"message": "User signed in successfully"}
+        else:
+            # Email doesn't exist, so insert it as a new user
+            query = "INSERT INTO users(email) VALUES($1)"
+            await conn.execute(query, email)
+            await conn.close()
+            return {"message": "User registered successfully"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/text")
 async def post_text(email, textinput):
-    # Get the response from the OpenAI model
-    message = text_to_text_response(textinput)
-    # Save the conversation to the database
-    conn = sqlite3.connect("chat_app.db")
-    cursor = conn.cursor()
-    cursor.execute("INSERT INTO chat_history (user_email, prompt, completion) VALUES (?, ?, ?)", (email, textinput, message))
-    conn.commit()
-    conn.close()
-    print("text message posted successfully")
-    return message
+    try:
+        # Create a database connection pool
+        pool = await create_db_pool()
+
+        # Get the response from the OpenAI model
+        message = text_to_text_response(textinput)
+
+        # Save the conversation to the database
+        async with pool.acquire() as conn:
+            await conn.execute(
+                "INSERT INTO chat_history (user_email, prompt, completion) VALUES ($1, $2, $3)",
+                email,
+                textinput,
+                message,
+            )
+
+        print("Text message posted successfully")
+
+        return message
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        # Close the database pool when done
+        await pool.close()
 
 #get speech
 @app.post("/speech")
