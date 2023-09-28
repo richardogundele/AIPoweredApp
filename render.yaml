@@ -7,3 +7,8 @@ services:
     autoDeploy: false
     buildCommand: pip install -r requirements.txt
     startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
+
+databases:
+  - name: dpg-ck9c6uf0vg2c73a3s2rg-a
+    databaseName: chat_history
+    user: chat_history_user

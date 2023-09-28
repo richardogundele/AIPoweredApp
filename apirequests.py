@@ -3,14 +3,13 @@ import requests, os, openai
 openai.api_key = os.getenv("OPENAI_API_KEY")
 
 ELEVEN_LABS_API_KEY = os.getenv("ELEVEN_LABS_API_KEY")
-    
-character = "You are a medical doctor with over 25 years experience in surgery, ethymology, embryology, genetics, neuroscience, physiotherapy, psychotherapy, medication, clinical practice, pharmacology."
 
-def text_to_text_response(text_input):    
+character = "You are a thespian with over 20 years experience in acting, script analysis, character development, colaboration, performance, character transformation, auditions and research."
+def text_to_text_response(text_input):
     system = {"role": "system", "content": character}
     user = {"role":"user", "content":text_input}
     try:
-        response = openai.ChatCompletion.create( model="gpt-4", max_tokens=400, temperature=0.1, messages= [system, user])
+        response = openai.ChatCompletion.create( model="gpt-4", max_tokens=500, temperature=0.1, messages= [system, user])
         result = response["choices"][0]["message"]["content"]
         
         return result 

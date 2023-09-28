@@ -1,22 +1,18 @@
+#libraries
+import openai, os
 from typing import Optional
-from fastapi import FastAPI
-app = FastAPI()
-
-
-import openai, os, sqlite3, asyncpg
-from fastapi import FastAPI, File, UploadFile, HTTPException
 from fastapi.responses import StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
-from openai_gpt4 import text_to_text_response
-from database import *
+from fastapi import FastAPI, File, UploadFile, HTTPException
 
-openai.api_key = os.getenv("OPENAI_API_KEY")
+#functions used
+from dbconnect import getSession
+from apirequests import text_to_text_response
+from dbfunctions import getChats, saveChat, check_and_add_email
 
-DATABASE_URL = os.getenv("DATABASE_URL")
+app = FastAPI()   #fastAPI initialization
 
-db_url = os.getenv("DATABASE_URL")
-db_user = os.getenv("DB_USER")
-db_password = os.getenv("DB_PASSWORD")
+openai.api_key = "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"
 
 origins = [ 
            "https://localhost:5173",
@@ -33,68 +29,23 @@ app.add_middleware(
                    allow_headers=["*"],
                    )
 
-async def create_db_pool():
-    return await asyncpg.create_pool(db_url, user=db_user, password=db_password)
+@app.on_event("startup")
+def startup_db_client():
+    app.state.db = getSession()
 
+@app.on_event("shutdown")
+def shutdown_db_client():
+     app.state.db.close()
 
 @app.get("/")
 def read_root():
     return {"ThespAIn": "/Welcome To ThespAIn Backend Code"}
 
-@app.get("/some_route")
-async def get_data():
-    conn = await connect_to_database()
-    data = await conn.fetch("SELECT * FROM your_table")
-    await conn.close()
-    return {"data": data}
-
+#User registration endpoint       
+@app.post("/getstarted")
 async def get_started(email):
-    try:
-        conn = await asyncpg.connect(DATABASE_URL)
-        # Check if the email already exists in the database
-        query = "SELECT email FROM users WHERE email=$1"
-        existing_email = await conn.fetchval(query, email)
-
-        if existing_email:
-            # Email already exists, no need to insert it again
-            await conn.close()
-            return {"message": "User signed in successfully"}
-        else:
-            # Email doesn't exist, so insert it as a new user
-            query = "INSERT INTO users(email) VALUES($1)"
-            await conn.execute(query, email)
-            await conn.close()
-            return {"message": "User registered successfully"}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-@app.post("/text")
-async def post_text(email, textinput):
-    try:
-        # Create a database connection pool
-        pool = await create_db_pool()
-
-        # Get the response from the OpenAI model
-        message = text_to_text_response(textinput)
-
-        # Save the conversation to the database
-        async with pool.acquire() as conn:
-            await conn.execute(
-                "INSERT INTO chat_history (user_email, prompt, completion) VALUES ($1, $2, $3)",
-                email,
-                textinput,
-                message,
-            )
-
-        print("Text message posted successfully")
-
-        return message
-
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-    finally:
-        # Close the database pool when done
-        await pool.close()
+    check_and_add_email(email=email)
+    return ("Welcome")
 
 #get speech
 @app.post("/speech")
@@ -106,37 +57,33 @@ async def post_speech(email, file:UploadFile= File(...)):
     # text_decoded = convert_speech_to_text(audio_input)  
     text_decoded = transcript["text"]
     if not text_decoded:
-        raise HTTPException(status_code=400, detail="Failed to decode Audio")
+        raise HTTPException(status_code=400, detail="Failed to decode Audio from Whisper")
     else:
         message = text_to_text_response(text_decoded)
     return message
-    
+
+@app.post("/text")
+async def post_text(email, textinput):
+    # Get the response from the OpenAI model
+    message = text_to_text_response(textinput)
+    #saved to database
+    saved = saveChat(email=email, prompt=textinput, completion=message)
+    print(f">>>>>>>>>>>> {saved}")
+    # Save the conversation to the database
+    print("database stored successfully")
+    return message
+
 #get history
 @app.get("/history/{email}")
-async def get_chat_history(email):
-    conn = sqlite3.connect("chat_app.db")
-    cursor = conn.cursor()
-    cursor.execute("SELECT prompt, completion FROM chat_history WHERE user_email=?", (email,))
-    chat_history = [{"tprompt": row[0], "completion":row[1]} for row in cursor.fetchall()]
-    conn.close()
-    trigger_export()
-    return {"chat_history":chat_history}
+def get_chat_history(email):
+    rs =  getChats(email)
+    if (len(rs) <= 0):
+           return{"chat_history":[]}
+    # rs = json.dumps(rs)
+    # trigger_export()
+    return {"chat_history":rs}
     
-@app.post("/export_for_fine_tuning")
-async def trigger_export():
-    result = export_chat_data_to_jsonl()
-    return result
-
-
-
-# async def post_speech(speech_converted):
-#     chat_response = text_to_text_response(speech_converted)
-#     if not chat_response:
-#         return HTTPException(status_code=400, details="Failure to get chat response")
-#     return chat_response
-    # audio_output = convert_text_to_speech(chat_response)
-    # if not audio_output:
-    #     return HTTPException(status_code=400, detail="failed to get audio")
-    # def iterfile():
-    #     yield audio_output
-    # return StreamingResponse(iterfile(), media_type="application/octet-stream")
+# @app.post("/export_for_fine_tuning")
+# async def trigger_export():
+#     result = export_chat_data_to_jsonl()
+#     return result
