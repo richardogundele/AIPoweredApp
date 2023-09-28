@@ -1,7 +1,7 @@
 from sqlalchemy import Column, Integer, MetaData, String, Table, Text, create_engine
 from sqlalchemy.orm import Session
 
-engine = create_engine('postgresql+psycopg2://chat_history_user:FWR5uxEvl0did82wpeH0qky7APeDBMdP@dpg-ck9c6uf0vg2c73a3s2rg-a.oregon-postgres.render.com/chat_history')
+engine = create_engine('postgres://chat_history_user:FWR5uxEvl0did82wpeH0qky7APeDBMdP@dpg-ck9c6uf0vg2c73a3s2rg-a/chat_history')
 session = Session(engine)
 
 metadata_obj = MetaData()
