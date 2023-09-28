@@ -12,7 +12,7 @@ from dbfunctions import getChats, saveChat, check_and_add_email
 
 app = FastAPI()   #fastAPI initialization
 
-openai.api_key = "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"
+openai.api_key = os.getenv("OPENAI_API_KEY")
 
 origins = [ 
            "https://localhost:5173",
