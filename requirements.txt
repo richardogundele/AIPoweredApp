@@ -46,3 +46,4 @@ yarl==1.9.2
 python-dotenv==0.7.0
 ipython==7.34.0
 SQLAlchemy==2.0.21
+psycopg2-binary==2.9.8
