@@ -1,0 +1,50 @@
+   <View className="flex justify-center items-center">
+          {
+        
+              recording ? (
+                <TouchableOpacity className="space-y-2">
+                  {/* recording stop button */}
+                  <Image 
+                    className="rounded-full" 
+                    source={require('../../assets/images/voiceLoading.gif')}
+                    style={{width: hp(10), height: hp(10)}}
+                  />
+                </TouchableOpacity>
+                
+              ) : (
+                <TouchableOpacity onPress={startRecording}>
+                  {/* recording start button */}
+                  <Image 
+                    className="rounded-full" 
+                    source={require('../../assets/images/recordingIcon.png')}
+                    style={{width: hp(10), height: hp(10)}}
+                  />
+                </TouchableOpacity>
+              )
+          }
+         {
+            result.length >0 && (
+                <TouchableOpacity 
+                style={styles.boxShadow}
+                onPress={sendMessage} 
+                className="bg-white  rounded-full justify-center items-center flex w-14 h-14 absolute right-2 bottom-3"
+              >
+                 <Icon name="send" size={30} color="#000" />
+              </TouchableOpacity>
+            )
+          }
+          {
+            recording && (
+              <TouchableOpacity 
+                onPress={stopRecording} 
+                className="bg-red-400 rounded-3xl p-2 absolute left-3"
+              >
+               <Icon name="stop-circle-outline" size={30} color="#fff" />
+              </TouchableOpacity>
+            )
+          }
+          
+            
+            
+          
+        </View>
